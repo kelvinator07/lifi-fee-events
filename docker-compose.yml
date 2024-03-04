@@ -1,0 +1,62 @@
+# version: "3.8"
+
+# services:
+#   mongodb:
+#     image: mongo:7.0.5-jammy
+#     restart: unless-stopped
+#     env_file: ./.env
+#     environment:
+#       - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
+#       - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
+#     ports:
+#       - $MONGODB_DOCKER_PORT:$MONGODB_DOCKER_PORT
+#     # healthcheck:
+#     #   test: echo 'db.stats().ok' | mongo localhost:27017/test --quiet
+#     #   interval: 10s
+#     #   timeout: 10s
+#     #   retries: 5
+#     # volumes:
+#     #   - db:/data/db
+
+#   server:
+#     build: 
+#       context: .
+#       dockerfile: Dockerfile
+#     restart: unless-stopped
+#     env_file: ./.env
+#     ports:
+#       - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
+#     environment:
+#       - MONGO_URI=$MONGO
+#       # - MONGO_INITDB_DATABASE=lifi_db
+#     stdin_open: true
+#     tty: true
+#     depends_on:
+#       - mongodb
+
+# # volumes:
+# #   db:
+
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      - MONGO_URI=mongodb://db:27017/fee_collector_db
+      - NETWORK=polygon
+      - PORT=3000
+
+  db:
+    image: mongo:7.0.5-jammy
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=fee_collector_db
+
+volumes:
+  mongodb_data:
