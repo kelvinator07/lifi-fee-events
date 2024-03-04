@@ -1,19 +1,21 @@
-import express, { Application } from "express";
-import Server from "./src/index";
+import express, { Application, Request, Response } from 'express'
+import Server from './src/index'
+import { PORT } from './src/utils/constants'
 
-const app: Application = express();
-const server: Server = new Server(app);
-const PORT: number = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
+const app: Application = express()
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const server: Server = new Server(app)
 
-app
-  .listen(PORT, "localhost", function () {
-    console.log(`Server is running on port ${PORT}.`);
-  })
-  .on("error", (err: any) => {
-    if (err.code === "EADDRINUSE") {
-      console.log("Error: address already in use");
+app.get('/', async (req: Request, res: Response) => {
+    return res.status(200).send({ message: 'Welcome api' })
+})
+
+app.listen(PORT, 'localhost', async () => {
+    console.log(`Server is running on port ${PORT}.`)
+}).on('error', (err: Error) => {
+    if (err.name === 'EADDRINUSE') {
+        console.log('Error: address already in use')
     } else {
-      console.log(err);
+        console.log(err)
     }
-  });
-
+})
