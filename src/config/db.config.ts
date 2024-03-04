@@ -1,7 +1,5 @@
-import { ConnectOptions } from "mongodb";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-
 dotenv.config();
 
 const mongoUrl: string = process.env.MONGO_URI as string;
