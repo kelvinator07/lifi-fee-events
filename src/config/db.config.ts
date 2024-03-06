@@ -1,17 +1,18 @@
-import mongoose from "mongoose";
-import dotenv from "dotenv";
+import mongoose from 'mongoose';
+import logger from '../utils/logger';
+import dotenv from 'dotenv';
 dotenv.config();
 
 const mongoUrl: string = process.env.MONGO_URI as string;
-console.log("mongoUrl ", mongoUrl);
+logger.info(`mongoUrl ${mongoUrl}`);
 
 const mongoSetup = async () => {
     try {
         mongoose.Promise = global.Promise;
         await mongoose.connect(mongoUrl!);
-        console.log("MongoDb Connected");
+        logger.info('MongoDb Connected');
     } catch (error) {
-        console.error("Error while trying to connect to MongoDb ", error);
+        logger.error('Error while trying to connect to MongoDb ', error);
         process.exit(1);
     }
 };

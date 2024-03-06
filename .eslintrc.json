@@ -13,13 +13,11 @@
         "ecmaVersion": "latest",
         "sourceType": "module"
     },
-    "plugins": [
-        "@typescript-eslint"
-    ],
+    "plugins": ["@typescript-eslint"],
     "ignorePatterns": ["*.test.ts"],
     "rules": {
         "@typescript-eslint/no-unused-vars": "error",
-        // to enforce using type for object type definitions, can be type or interface 
+        // to enforce using type for object type definitions, can be type or interface
         "@typescript-eslint/consistent-type-definitions": ["error", "type"]
     }
 }
