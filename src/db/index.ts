@@ -1,10 +1,9 @@
-import mongoSetup from '../config/db.config'
+import mongoSetup from '../config/db.config';
 
 class Database {
-
-  constructor() {
-    mongoSetup()
-  }
+    constructor() {
+        mongoSetup();
+    }
 }
 
 export default Database;
