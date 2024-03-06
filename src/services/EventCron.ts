@@ -1,19 +1,16 @@
-import { BigNumber, ethers } from "ethers";
-import cron from "node-cron";
-import dotenv from "dotenv";
-import IChain from "../networks/IChain";
-import { ParsedFeeCollectedEvent } from "../models/ParsedFeeCollectedEvent";
-import parsedEventRepository from "../repositories/event.repository";
-import IParsedFeeCollectedEvents from "../networks/IParsedFeeCollectedEvents";
-import Polygon from "../networks/Polygon";
-import Rootstock from "../networks/Rootstock";
+import cron from 'node-cron';
+import dotenv from 'dotenv';
+import IChain from '../networks/IChain';
+import { FeeCollectedEvent } from '../models/FeeCollectedEvent';
+import eventRepository from '../repositories/event.repository';
+import IParsedFeeCollectedEvents from '../networks/IParsedFeeCollectedEvents';
+import Polygon from '../networks/Polygon';
+import Solana from '../networks/Solana';
+import logger from '../utils/logger';
+import { CRON_TIMER } from '../utils/constants';
 
 dotenv.config();
 
-// Using console for logging
-const logger = console;
-
-// get blocks until null, then use cron job
 export default class EventCron {
     private _network: IChain;
     private lastScannedBlock: number = 0;
@@ -26,102 +23,92 @@ export default class EventCron {
 
     createNetworkClass(network: string): IChain {
         switch (network) {
-            case "polygon":
+            case 'polygon':
                 return new Polygon();
-            case "rootstock":
-                return new Rootstock();
+            case 'solana':
+                return new Solana();
             default:
+                logger.error(`Network ${network} not yet implemented`);
                 throw new Error(`Network ${network} not yet implemented`);
         }
     }
 
     static async build(network: string) {
+        logger.info(`[build] with: ${network}`);
         const eventCron = new EventCron(network);
         return eventCron;
     }
 
     async startCronForNetwork() {
+        logger.info('[startCronForNetwork]');
         this.lastScannedBlock = await this.getLastScannedBlock();
-        console.log("this.lastScannedBlock ", this.lastScannedBlock);
         this.latestBlock = await this._network.getLatestBlock();
-        console.log("this.latestBlock ", this.latestBlock); // 54196523
 
-        for (let startBlock = this.lastScannedBlock; startBlock < this.latestBlock; startBlock++) {
-            console.log("startBlock ", startBlock);
-            const feeCollectorEvents = await this._network.loadFeeCollectorEvents(
-                startBlock,
-                startBlock + 1
-            );
-            logger.log("feeCollectorEvents length ", feeCollectorEvents.length);
+        for (let fromBlock = this.lastScannedBlock; fromBlock < this.latestBlock; fromBlock++) {
+            const toBlock = fromBlock + 1;
+            const feeCollectorEvents = await this._network.loadFeeCollectorEvents(fromBlock, toBlock);
+            logger.info(`[startCronForNetwork] feeCollectorEvents length ${feeCollectorEvents.length} from ${fromBlock} to ${toBlock}`);
             if (feeCollectorEvents.length > 0) {
-                logger.log("feeCollectorEvents size ", feeCollectorEvents.length);
-                const parsedFeeCollectorEvents =
-                    this._network.parseFeeCollectorEvents(feeCollectorEvents);
-                    await this.persistToDatabase(parsedFeeCollectorEvents);
+                const parsedFeeCollectorEvents = this._network.parseFeeCollectorEvents(feeCollectorEvents);
+                await this.persistToDatabase(parsedFeeCollectorEvents);
             }
-            await this.saveLastScannedBlock(startBlock + 1);
+            await this.saveLastScannedBlock(toBlock);
         }
-        console.log("end of for loop ");
-         // update nextBlockToScan for the next 2 blocks
+        logger.info(`[startCronForNetwork] Reached latest block ${this.latestBlock}`);
+
+        // update nextBlockToScan for the next 2 blocks
         this.nextBlockToScan = this.latestBlock + 2;
 
-        cron.schedule(process.env.CRON_TIMER!, async () => this.startRealTimeCronJobCheck()).now();
+        // Cron job for future blocks
+        cron.schedule(CRON_TIMER, async () => this.startRealTimeCronJobCheck()).now();
     }
 
     async startRealTimeCronJobCheck() {
-        logger.log("startRealTimeCronJobCheck ");
+        logger.info('[startRealTimeCronJobCheck]');
         // check if next block exists before we proceed
         const nextBlock = await this._network.getBlock(this.nextBlockToScan);
-        console.log("nextBlock ", nextBlock);
         if (nextBlock) {
             const feeCollectorEvents = await this._network.loadFeeCollectorEvents(
                 this.nextBlockToScan - 1,
                 this.nextBlockToScan
             );
-            logger.log("feeCollectorEvents length ", feeCollectorEvents.length);
+            logger.info(
+                `[startRealTimeCronJobCheck] feeCollectorEvents length ${feeCollectorEvents.length} from ${this.nextBlockToScan - 1} to ${this.nextBlockToScan}`
+            );
             if (feeCollectorEvents.length > 0) {
-                logger.log("feeCollectorEvents size ", feeCollectorEvents.length);
-                const parsedFeeCollectorEvents =
-                    this._network.parseFeeCollectorEvents(feeCollectorEvents);
-                this.persistToDatabase(parsedFeeCollectorEvents);
+                const parsedFeeCollectorEvents = this._network.parseFeeCollectorEvents(feeCollectorEvents);
+                await this.persistToDatabase(parsedFeeCollectorEvents);
             }
-    
-            this.saveLastScannedBlock(this.nextBlockToScan);
+
+            await this.saveLastScannedBlock(this.nextBlockToScan);
 
             // update nextBlockToScan for the next 2 blocks
             this.nextBlockToScan = this.nextBlockToScan + 2;
         }
     }
 
-    async persistToDatabase(
-        parsedFeeCollectorEvents: IParsedFeeCollectedEvents[]
-    ) {
-        // convert to event model
+    async persistToDatabase(parsedFeeCollectorEvents: IParsedFeeCollectedEvents[]) {
         const dbDocument = this.parseToDBDocument(parsedFeeCollectorEvents);
-        // persist data to database
-        const result = await parsedEventRepository.saveMany(dbDocument);
-        logger.log("result ", result);
+        await eventRepository.saveMany(dbDocument);
     }
 
-    parseToDBDocument(parsedFeeCollectorEvents: IParsedFeeCollectedEvents[]) {
-        return parsedFeeCollectorEvents.map((event) => {
+    parseToDBDocument(parsedFeeCollectorEvents: IParsedFeeCollectedEvents[]): FeeCollectedEvent[] {
+        return parsedFeeCollectorEvents.map(event => {
             return {
                 token: event.token,
                 integrator: event.integrator,
-                integratorFee: event.integratorFee.toBigInt(),
-                lifiFee: event.lifiFee.toBigInt(),
-            } as ParsedFeeCollectedEvent;
+                integratorFee: event.integratorFee.toString(),
+                lifiFee: event.lifiFee.toString(),
+            } as FeeCollectedEvent;
         });
     }
 
     async getLastScannedBlock(): Promise<number> {
-        const result = await parsedEventRepository.retrieveLastScannedBlock();
-        console.log("result db ", result);
+        const result = await eventRepository.retrieveLastScannedBlock();
         return result;
     }
 
     async saveLastScannedBlock(blockNumber: number): Promise<void> {
-        const saveLastScannedBlock = await parsedEventRepository.saveLastScannedBlock(blockNumber);
-        console.log("saveLastScannedBlock ", saveLastScannedBlock);
+        await eventRepository.saveLastScannedBlock(blockNumber);
     }
 }

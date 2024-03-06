@@ -1,61 +1,18 @@
-import { Request, Response } from "express";
-import { IPaginateOptions } from "typegoose-cursor-pagination";
-import { ParsedFeeCollectedEvent } from "../models/ParsedFeeCollectedEvent";
-import parsedEventRepository from "../repositories/event.repository";
+import { Request, Response } from 'express';
+import { IPaginateOptions } from 'typegoose-cursor-pagination';
+import { FeeCollectedEvent } from '../models/FeeCollectedEvent';
+import eventRepository from '../repositories/event.repository';
+import { STATUS, STATUSCODE, successResponse, errorResponse } from '../utils/response';
 
 export default class EventController {
-    async create(req: Request, res: Response) {
-        if (
-            !req.body.token ||
-            !req.body.integrator ||
-            !req.body.integratorFee ||
-            !req.body.lifiFee
-        ) {
-            res.status(400).send({
-                message: "Missing field!",
-            });
-            return;
-        }
-
-        const parsedEvent: ParsedFeeCollectedEvent = req.body;
-
-        try {
-            const newEvent: ParsedFeeCollectedEvent = await parsedEventRepository.save(parsedEvent);
-            res.status(201).send(newEvent);
-        } catch (err) {
-            res.status(500).send({
-                message: "Some error occurred while creating event.",
-            });
-        }
-    }
-
     async findAll(req: Request, res: Response) {
         try {
-            const allEvents: ParsedFeeCollectedEvent[] = await parsedEventRepository.retrieveAll();
-            res.status(200).send(allEvents);
+            const allEvents: FeeCollectedEvent[] = await eventRepository.retrieveAll();
+            res.status(STATUSCODE.OK).json(successResponse(STATUS.SUCCESS, allEvents));
         } catch (err) {
-            res.status(500).send({
-                message: "Some error occurred while retrieving Events.",
-            });
-        }
-    }
-
-    async findOne(req: Request, res: Response) {
-        const { id } = req.params;
-
-        try {
-            const event: ParsedFeeCollectedEvent | null = await parsedEventRepository.retrieveById(id);
-            if (event) {
-                res.status(200).send(event);
-            } else {
-                res.status(404).send({
-                    message: `Cannot find Event with id=${id}.`,
-                });
-            }
-        } catch (err) {
-            res.status(500).send({
-                message: `Error retrieving Event with id=${id}.`,
-            });
+            res.status(STATUSCODE.SERVER).json(
+                errorResponse(STATUS.ERROR, 'Some error occurred while retrieving Events.')
+            );
         }
     }
 
@@ -64,26 +21,39 @@ export default class EventController {
 
         const ethAddressPattern = /^0x[a-fA-F0-9]{40}$/;
         if (!ethAddressPattern.test(address)) {
-            res.status(400).json({ message: 'Invalid Integrator Ethereum address format' });
+            res.status(STATUSCODE.BAD_REQUEST).json(
+                errorResponse(STATUS.ERROR, 'Invalid Integrator Ethereum address format.')
+            );
+            return;
         }
 
         const { limit, next } = req.query;
-        
+
         const options: IPaginateOptions = {
-            sortField: "_id",
+            sortField: '_id',
             sortAscending: true,
             limit: parseInt(limit as string, 10) || 10, // If "limit" is not sent we will default it to 10.
-            next: next as string
+            next: next as string,
         };
 
         try {
-            const result = await parsedEventRepository.retrieveAllByIntegratorAddress(address, options);
-            const {docs: events, hasPrevious, hasNext, next, previous, totalDocs: totalEvents} = result;
-            res.status(200).send({ events, hasPrevious, hasNext, next, previous, totalEvents });
+            const result = await eventRepository.retrieveAllByIntegratorAddress(address, options);
+            const { docs: events, hasPrevious, hasNext, next, previous, totalDocs: totalEvents } = result;
+            res.status(STATUSCODE.OK).json(
+                successResponse(STATUS.SUCCESS, {
+                    events,
+                    hasPrevious,
+                    hasNext,
+                    next,
+                    previous,
+                    totalEvents,
+                })
+            );
+            return;
         } catch (err) {
-            res.status(500).send({
-                message: `Error retrieving Event with id = ${address}.`,
-            });
+            res.status(STATUSCODE.SERVER).json(
+                errorResponse(STATUS.ERROR, `Error retrieving Event with id = ${address}.`)
+            );
         }
     }
 }

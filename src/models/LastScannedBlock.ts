@@ -1,4 +1,4 @@
-import { prop, getModelForClass, modelOptions } from "@typegoose/typegoose";
+import { prop, getModelForClass, modelOptions } from '@typegoose/typegoose';
 
 @modelOptions({ schemaOptions: { timestamps: true, versionKey: false } })
 class LastScannedBlock {

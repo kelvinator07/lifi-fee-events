@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import { BigNumber } from 'ethers';
 
 export default interface IParsedFeeCollectedEvents {
     token: string; // the address of the token that was collected

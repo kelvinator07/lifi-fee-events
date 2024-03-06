@@ -1,6 +1,6 @@
-import { ethers } from "ethers";
-import { BlockTag } from "@ethersproject/abstract-provider";
-import IParsedFeeCollectedEvents from "./IParsedFeeCollectedEvents";
+import { ethers } from 'ethers';
+import { BlockTag } from '@ethersproject/abstract-provider';
+import IParsedFeeCollectedEvents from './IParsedFeeCollectedEvents';
 
 export default abstract class IChain {
     abstract loadFeeCollectorEvents(fromBlock: BlockTag, toBlock: BlockTag): Promise<ethers.Event[]>;
