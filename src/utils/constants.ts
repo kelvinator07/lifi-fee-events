@@ -2,6 +2,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const APP_NAME = process.env.APP_NAME || 'lifi-fee-events';
+export const BLOCK_SCAN_LIMIT =  process.env.BLOCK_SCAN_LIMIT ? 
+        (parseInt(process.env.BLOCK_SCAN_LIMIT, 10) < 3000 ? parseInt(process.env.BLOCK_SCAN_LIMIT, 10) : 3000)
+        : 3000;
 export const START_BLOCK_NUMBER = process.env.START_BLOCK_NUMBER
     ? parseInt(process.env.START_BLOCK_NUMBER, 10)
     : 54197277;

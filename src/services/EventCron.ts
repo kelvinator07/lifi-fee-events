@@ -7,7 +7,7 @@ import IParsedFeeCollectedEvents from '../networks/IParsedFeeCollectedEvents';
 import Polygon from '../networks/Polygon';
 import Solana from '../networks/Solana';
 import logger from '../utils/logger';
-import { CRON_TIMER } from '../utils/constants';
+import { CRON_TIMER, BLOCK_SCAN_LIMIT } from '../utils/constants';
 
 dotenv.config();
 
@@ -44,16 +44,20 @@ export default class EventCron {
         this.lastScannedBlock = await this.getLastScannedBlock();
         this.latestBlock = await this._network.getLatestBlock();
 
-        for (let fromBlock = this.lastScannedBlock; fromBlock < this.latestBlock; fromBlock++) {
-            const toBlock = fromBlock + 1;
-            const feeCollectorEvents = await this._network.loadFeeCollectorEvents(fromBlock, toBlock);
-            logger.info(`[startCronForNetwork] feeCollectorEvents length ${feeCollectorEvents.length} from ${fromBlock} to ${toBlock}`);
+        for (let fromBlock = this.lastScannedBlock; fromBlock <= this.latestBlock; fromBlock += BLOCK_SCAN_LIMIT) {
+            let toBlock = fromBlock + BLOCK_SCAN_LIMIT;
+            if (toBlock > this.latestBlock) {
+                toBlock = this.latestBlock;
+            }
+            const feeCollectorEvents = await this._network.loadFeeCollectorEvents(fromBlock + 1, toBlock);
+            logger.info(`[startCronForNetwork] feeCollectorEvents length ${feeCollectorEvents.length} from ${fromBlock + 1} to ${toBlock}`);
             if (feeCollectorEvents.length > 0) {
                 const parsedFeeCollectorEvents = this._network.parseFeeCollectorEvents(feeCollectorEvents);
                 await this.persistToDatabase(parsedFeeCollectorEvents);
             }
             await this.saveLastScannedBlock(toBlock);
         }
+
         logger.info(`[startCronForNetwork] Reached latest block ${this.latestBlock}`);
 
         // update nextBlockToScan for the next 2 blocks
