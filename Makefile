@@ -9,10 +9,13 @@ mongodb-stop:
 server:
 	npm run start
 
+test:
+	npm run test
+
 docker:
 	docker compose up
 
 docker-down:
 	docker compose down
  
-.PHONY: mongodb mongodb-stop server docker docker-down
+.PHONY: mongodb mongodb-stop server test docker docker-down

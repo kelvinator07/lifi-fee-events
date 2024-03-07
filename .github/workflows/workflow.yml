@@ -1,0 +1,36 @@
+# Github Actions
+
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out repository
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with: 
+          node-version: "21.x"
+
+      - name: Node & Npm Version
+        run: |
+          node -v
+          npm -v
+
+      - name: Installdependencies 🔧
+        run: npm install
+
+      - name: Run Test 🚨
+        run: npm test
