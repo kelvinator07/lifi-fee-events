@@ -4,6 +4,7 @@ import { IPaginateOptions, IPaginateResult } from 'typegoose-cursor-pagination';
 import { FeeCollectedEventModel } from '../models/FeeCollectedEvent';
 import { LastScannedBlockModel } from '../models/LastScannedBlock';
 import EventRepository from '../repositories/event.repository';
+import { START_BLOCK_NUMBER } from '../utils/constants';
 
 const events = [
     {
@@ -162,7 +163,7 @@ describe('EventRepository', () => {
     });
 
     it('should handle the case where there is no last scanned block and return a default value', async () => {
-      const defaultBlockNumber = 54197113;
+      const defaultBlockNumber = START_BLOCK_NUMBER;
 
       const findOneStub = sinon.stub(LastScannedBlockModel, 'findOne').returns({
         sort: () => ({
